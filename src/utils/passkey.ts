@@ -1,6 +1,9 @@
 import { encodeBase64Url, utf8Decode } from "./encode";
 
 // attestation = sign up
+// https://www.w3.org/TR/webauthn-2/#sctn-registering-a-new-credential
+// DOES NOT verify the origin of the attestation
+// since it's just a basic example
 export async function verifyAttestation(
 	credential: PublicKeyCredential,
 	options: {
