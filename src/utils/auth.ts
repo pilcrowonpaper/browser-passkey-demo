@@ -40,7 +40,6 @@ export async function signUp(username: string): Promise<User> {
 	const userId = generateId(8);
 	const publicKey = await verifyAttestation(publicKeyCredential, {
 		challenge,
-		origin: "http://localhost:3000",
 	});
 	db.insert({
 		id: userId,
@@ -73,7 +72,6 @@ export async function signIn(): Promise<User> {
 	await verifyAssertion(publicKeyCredential, {
 		publicKey: decodeBase64Url(databaseUser.public_key),
 		challenge,
-		origin: "http://localhost:3000",
 	});
 
 	return {

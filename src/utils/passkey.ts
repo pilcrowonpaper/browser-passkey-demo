@@ -4,7 +4,6 @@ export async function verifyAttestation(
 	credential: PublicKeyCredential,
 	options: {
 		challenge: ArrayBuffer;
-		origin: string;
 	},
 ): Promise<ArrayBuffer> {
 	const response = credential.response;
@@ -24,7 +23,10 @@ export async function verifyAttestation(
 	) {
 		throw new Error("Failed to verify attestation");
 	}
-	if (!("origin" in clientData) || clientData.origin !== options.origin) {
+	if (
+		!("origin" in clientData) ||
+		clientData.origin !== window.location.origin
+	) {
 		throw new Error("Failed to verify attestation");
 	}
 
@@ -63,7 +65,6 @@ export async function verifyAssertion(
 	options: {
 		publicKey: ArrayBuffer;
 		challenge: ArrayBuffer;
-		origin: string;
 	},
 ): Promise<void> {
 	const response = credential.response;
@@ -88,7 +89,7 @@ export async function verifyAssertion(
 	if (C.challenge !== encodeBase64Url(options.challenge)) {
 		throw new Error("Failed to verify assertion");
 	}
-	if (C.origin !== options.origin) {
+	if (C.origin !== window.location.origin) {
 		throw new Error("Failed to verify assertion");
 	}
 	const rpIdHash = authData.slice(0, 32);
