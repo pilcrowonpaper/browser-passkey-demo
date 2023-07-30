@@ -14,23 +14,18 @@ export async function verifyAttestation(
 	if (!(response instanceof AuthenticatorAttestationResponse)) {
 		throw new Error("Failed to verify attestation");
 	}
-	const clientData = JSON.parse(utf8Decode(response.clientDataJSON)) as unknown;
-	if (typeof clientData !== "object" || clientData === null) {
+	const clientData = JSON.parse(utf8Decode(response.clientDataJSON)) as {
+		type: string;
+		challenge: string; // base64url encoded challenge
+		origin: string; // url origin
+	};
+	if (clientData.type !== "webauthn.create") {
 		throw new Error("Failed to verify attestation");
 	}
-	if (!("type" in clientData) || clientData.type !== "webauthn.create") {
+	if (clientData.challenge !== encodeBase64Url(options.challenge)) {
 		throw new Error("Failed to verify attestation");
 	}
-	if (
-		!("challenge" in clientData) ||
-		clientData.challenge !== encodeBase64Url(options.challenge)
-	) {
-		throw new Error("Failed to verify attestation");
-	}
-	if (
-		!("origin" in clientData) ||
-		clientData.origin !== window.location.origin
-	) {
+	if (clientData.origin !== window.location.origin) {
 		throw new Error("Failed to verify attestation");
 	}
 
@@ -86,24 +81,18 @@ export async function verifyAssertion(
 		throw new Error("Failed to verify assertion");
 	}
 	const authData = new Uint8Array(response.authenticatorData);
-	const clientDataJson = utf8Decode(response.clientDataJSON);
-	const clientData = JSON.parse(clientDataJson) as unknown;
-	if (typeof clientData !== "object" || clientData === null) {
+	const clientData = JSON.parse(utf8Decode(response.clientDataJSON)) as {
+		type: string;
+		challenge: string; // base64url encoded challenge
+		origin: string; // url origin
+	};
+	if (clientData.type !== "webauthn.get") {
 		throw new Error("Failed to verify assertion");
 	}
-	if (!("type" in clientData) || clientData.type !== "webauthn.get") {
+	if (clientData.challenge !== encodeBase64Url(options.challenge)) {
 		throw new Error("Failed to verify assertion");
 	}
-	if (
-		!("challenge" in clientData) ||
-		clientData.challenge !== encodeBase64Url(options.challenge)
-	) {
-		throw new Error("Failed to verify assertion");
-	}
-	if (
-		!("origin" in clientData) ||
-		clientData.origin !== window.location.origin
-	) {
+	if (clientData.origin !== window.location.origin) {
 		throw new Error("Failed to verify assertion");
 	}
 	const rpIdHash = authData.slice(0, 32);
@@ -185,8 +174,6 @@ function convertDERSignatureToECDSASignature(
 	return ECDSASignature.buffer;
 }
 
-// remove leading 0x00s if larger then expected length
-// or add leading 0x00s if smaller than expected length
 function decodeDERInteger(
 	integerBytes: Uint8Array,
 	expectedLength: number,
@@ -194,10 +181,12 @@ function decodeDERInteger(
 	if (integerBytes.byteLength === expectedLength) return integerBytes;
 	if (integerBytes.byteLength < expectedLength) {
 		return concatenateUint8Array(
+			// add leading 0x00s if smaller than expected length
 			new Uint8Array(expectedLength - integerBytes.byteLength).fill(0),
 			integerBytes,
 		);
 	}
+	// remove leading 0x00s if larger then expected length
 	return integerBytes.slice(-32);
 }
 
