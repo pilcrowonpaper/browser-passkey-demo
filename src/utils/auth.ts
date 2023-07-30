@@ -20,8 +20,8 @@ export async function signUp(username: string): Promise<User> {
 		publicKey: {
 			rp: { name: "Passkey Demo" },
 			user: {
-				name: username,
 				id: crypto.getRandomValues(new Uint8Array(32)),
+				name: username,
 				displayName: username,
 			},
 			pubKeyCredParams: [
@@ -33,7 +33,6 @@ export async function signUp(username: string): Promise<User> {
 				},
 			],
 			challenge,
-			authenticatorSelection: { authenticatorAttachment: "platform" },
 		},
 	});
 	if (!(publicKeyCredential instanceof PublicKeyCredential)) {
