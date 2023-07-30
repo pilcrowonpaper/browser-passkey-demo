@@ -43,7 +43,7 @@ export async function signUp(username: string): Promise<User> {
 	});
 	db.insert({
 		id: userId,
-		credential_id: publicKeyCredential.id, // base64url encoded id
+		credential_id: publicKeyCredential.id, // base64url encoded
 		username,
 		public_key: encodeBase64Url(publicKey),
 	});

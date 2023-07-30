@@ -1,5 +1,6 @@
 import { encodeBase64Url, utf8Decode } from "./encode";
 
+// attestation = sign up
 export async function verifyAttestation(
 	credential: PublicKeyCredential,
 	options: {
@@ -32,6 +33,7 @@ export async function verifyAttestation(
 
 	const authData = new Uint8Array(response.getAuthenticatorData());
 	const rpIdHash = authData.slice(0, 32);
+	// relying party id is set to hostname by default
 	const rpIdData = new TextEncoder().encode(window.location.hostname);
 	const expectedRpIdHash = await crypto.subtle.digest("SHA-256", rpIdData);
 	if (!bytesEquals(rpIdHash, expectedRpIdHash)) {
@@ -47,7 +49,9 @@ export async function verifyAttestation(
 	if (flagsBits.charAt(flagsBits.length - 1) !== "1") {
 		throw new Error("Failed to verify attestation");
 	}
+
 	const COSEAlgorithmId = response.getPublicKeyAlgorithm();
+	// check if algorithm is ES256K
 	if (COSEAlgorithmId !== -7) {
 		throw new Error("Failed to verify attestation");
 	}
@@ -60,6 +64,7 @@ export async function verifyAttestation(
 	return publicKey;
 }
 
+// assertion = authentication
 export async function verifyAssertion(
 	credential: PublicKeyCredential,
 	options: {
@@ -71,28 +76,26 @@ export async function verifyAssertion(
 	if (!(response instanceof AuthenticatorAssertionResponse)) {
 		throw new Error("Failed to verify assertion");
 	}
-	// cData = clientDataJSON
-	const cData = response.clientDataJSON;
 	// authData = response.authenticatorData
 	const authData = new Uint8Array(response.authenticatorData);
-	const sig = response.signature;
-	const JSONtext = utf8Decode(cData);
-	const C = JSON.parse(JSONtext) as {
+	const clientDataJson = utf8Decode(response.clientDataJSON);
+	const clientData = JSON.parse(clientDataJson) as {
 		type: string;
 		challenge: string;
 		origin: string;
-		// tokenBinding.status  ????? missing???
 	};
-	if (C.type !== "webauthn.get") {
+	if (clientData.type !== "webauthn.get") {
 		throw new Error("Failed to verify assertion");
 	}
-	if (C.challenge !== encodeBase64Url(options.challenge)) {
+	if (clientData.challenge !== encodeBase64Url(options.challenge)) {
 		throw new Error("Failed to verify assertion");
 	}
-	if (C.origin !== window.location.origin) {
+	if (clientData.origin !== window.location.origin) {
 		throw new Error("Failed to verify assertion");
 	}
+
 	const rpIdHash = authData.slice(0, 32);
+	// relying party id is set to hostname by default
 	const rpIdData = new TextEncoder().encode(window.location.hostname);
 	const expectedRpIdHash = await crypto.subtle.digest("SHA-256", rpIdData);
 	if (!bytesEquals(rpIdHash, expectedRpIdHash)) {
@@ -102,13 +105,14 @@ export async function verifyAssertion(
 	if (flagsByte === null) {
 		throw new Error("Failed to verify assertion");
 	}
+	// convert byte into binary
 	const flagsBits = flagsByte.toString(2);
 	// check if user present flag (least significant bit) is 1
 	if (flagsBits.charAt(flagsBits.length - 1) !== "1") {
 		throw new Error("Failed to verify assertion");
 	}
 
-	const hash = await crypto.subtle.digest("SHA-256", cData);
+	const hash = await crypto.subtle.digest("SHA-256", response.clientDataJSON);
 	const verifiedSignature = await crypto.subtle.verify(
 		{
 			name: "ECDSA",
@@ -126,7 +130,7 @@ export async function verifyAssertion(
 		),
 		// the signature is encoded in DER
 		// so we need to convert into ECDSA compatible format
-		convertDERSignatureToECDSASignature(sig),
+		convertDERSignatureToECDSASignature(response.signature),
 		concatenateBuffer(authData, hash),
 	);
 	if (!verifiedSignature) {
