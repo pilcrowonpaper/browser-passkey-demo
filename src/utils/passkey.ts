@@ -32,7 +32,7 @@ export async function verifyAttestation(
 
 	const authData = new Uint8Array(response.getAuthenticatorData());
 	const rpIdHash = authData.slice(0, 32);
-	const rpIdData = new TextEncoder().encode("localhost");
+	const rpIdData = new TextEncoder().encode(window.location.hostname);
 	const expectedRpIdHash = await crypto.subtle.digest("SHA-256", rpIdData);
 	if (!bytesEquals(rpIdHash, expectedRpIdHash)) {
 		throw new Error("Failed to verify attestation");
@@ -93,7 +93,7 @@ export async function verifyAssertion(
 		throw new Error("Failed to verify assertion");
 	}
 	const rpIdHash = authData.slice(0, 32);
-	const rpIdData = new TextEncoder().encode("localhost");
+	const rpIdData = new TextEncoder().encode(window.location.hostname);
 	const expectedRpIdHash = await crypto.subtle.digest("SHA-256", rpIdData);
 	if (!bytesEquals(rpIdHash, expectedRpIdHash)) {
 		throw new Error("Failed to verify assertion");
