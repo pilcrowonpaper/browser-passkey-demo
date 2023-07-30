@@ -31,6 +31,10 @@ export async function verifyAttestation(
 		throw new Error("Failed to verify attestation");
 	}
 
+	// bytes 0-31: relying party id hash (SHA-256)
+	// byte 32: flags (stored in binary)
+	// bytes 33 ~ 36: signCount - ignore for passkeys (always 0?)
+	// minimum 37 bytes (for passkeys always 37?)
 	const authData = new Uint8Array(response.getAuthenticatorData());
 	const rpIdHash = authData.slice(0, 32);
 	// relying party id is set to hostname by default
@@ -44,6 +48,7 @@ export async function verifyAttestation(
 	if (flagsByte === null) {
 		throw new Error("Failed to verify attestation");
 	}
+	// convert into binary
 	const flagsBits = flagsByte.toString(2);
 	// check if user present flag (least significant bit) is 1
 	if (flagsBits.charAt(flagsBits.length - 1) !== "1") {
@@ -55,7 +60,6 @@ export async function verifyAttestation(
 	if (COSEAlgorithmId !== -7) {
 		throw new Error("Failed to verify attestation");
 	}
-	// we can ignore signCount when using passkeys
 
 	const publicKey = response.getPublicKey();
 	if (!publicKey) {
@@ -65,6 +69,7 @@ export async function verifyAttestation(
 }
 
 // assertion = authentication
+// based on https://www.w3.org/TR/webauthn-2/#sctn-verifying-assertion
 export async function verifyAssertion(
 	credential: PublicKeyCredential,
 	options: {
@@ -72,30 +77,33 @@ export async function verifyAssertion(
 		challenge: ArrayBuffer;
 	},
 ): Promise<void> {
+	// see verifyAssertion() (above) for additional comments
 	const response = credential.response;
 	if (!(response instanceof AuthenticatorAssertionResponse)) {
 		throw new Error("Failed to verify assertion");
 	}
-	// authData = response.authenticatorData
 	const authData = new Uint8Array(response.authenticatorData);
 	const clientDataJson = utf8Decode(response.clientDataJSON);
-	const clientData = JSON.parse(clientDataJson) as {
-		type: string;
-		challenge: string;
-		origin: string;
-	};
-	if (clientData.type !== "webauthn.get") {
+	const clientData = JSON.parse(clientDataJson) as unknown;
+	if (typeof clientData !== "object" || clientData === null) {
 		throw new Error("Failed to verify assertion");
 	}
-	if (clientData.challenge !== encodeBase64Url(options.challenge)) {
+	if (!("type" in clientData) || clientData.type !== "webauthn.get") {
 		throw new Error("Failed to verify assertion");
 	}
-	if (clientData.origin !== window.location.origin) {
+	if (
+		!("challenge" in clientData) ||
+		clientData.challenge !== encodeBase64Url(options.challenge)
+	) {
 		throw new Error("Failed to verify assertion");
 	}
-
+	if (
+		!("origin" in clientData) ||
+		clientData.origin !== window.location.origin
+	) {
+		throw new Error("Failed to verify assertion");
+	}
 	const rpIdHash = authData.slice(0, 32);
-	// relying party id is set to hostname by default
 	const rpIdData = new TextEncoder().encode(window.location.hostname);
 	const expectedRpIdHash = await crypto.subtle.digest("SHA-256", rpIdData);
 	if (!bytesEquals(rpIdHash, expectedRpIdHash)) {
@@ -105,9 +113,7 @@ export async function verifyAssertion(
 	if (flagsByte === null) {
 		throw new Error("Failed to verify assertion");
 	}
-	// convert byte into binary
 	const flagsBits = flagsByte.toString(2);
-	// check if user present flag (least significant bit) is 1
 	if (flagsBits.charAt(flagsBits.length - 1) !== "1") {
 		throw new Error("Failed to verify assertion");
 	}
@@ -141,12 +147,12 @@ export async function verifyAssertion(
 }
 
 // DER signature consists of several parts:
-// 1 byte: 48 (header byte)
-// 1 byte: total byte length - 1
-// 1 byte: 2 (header byte indicating an integer)
+// 1 byte: `48` (header byte)
+// 1 byte: total byte length - header byte length (1)
+// 1 byte: `2` (header byte indicating an integer)
 // 1 byte: r value byte length
 // around 32 bytes: r value
-// 1 byte: 2 (header byte indicating an integer)
+// 1 byte: `2` (header byte indicating an integer)
 // 1 byte: s value byte length
 // around 32 bytes: s value
 // (end - total of around 70 bytes)

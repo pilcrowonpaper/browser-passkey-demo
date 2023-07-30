@@ -21,9 +21,3 @@ export function utf8Decode(buffer: BufferSource) {
 	const textDecoder = new TextDecoder();
 	return textDecoder.decode(buffer);
 }
-
-export function encodeHex(data: ArrayLike<number> | ArrayBufferLike) {
-	return Array.from(new Uint8Array(data))
-		.map((i) => i.toString(16).padStart(2, "0"))
-		.join("");
-}

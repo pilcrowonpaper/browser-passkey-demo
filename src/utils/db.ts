@@ -5,7 +5,7 @@ type Schema = {
 	public_key: string;
 };
 
-export class Database {
+class Database {
 	private internal: Map<string, Schema>;
 	private eventListeners: ((db: Database) => void)[] = [];
 	private static key = "user";
@@ -95,5 +95,3 @@ export class Database {
 }
 
 export const db = new Database();
-
-db.onUpdate(function () {});

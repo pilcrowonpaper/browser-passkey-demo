@@ -50,8 +50,6 @@
 	import { signIn, signUp } from "../utils/auth";
 	import { db } from "../utils/db";
 
-	import type { Database } from "../utils/db";
-
 	const signupForm = document.getElementById("signup-form") as HTMLFormElement;
 	const loginForm = document.getElementById("login-form") as HTMLFormElement;
 	const statusParagraph = document.getElementById(
@@ -87,7 +85,7 @@
 
 	db.onUpdate(displayDatabase);
 
-	function displayDatabase(currentDb: Database): void {
+	function displayDatabase(currentDb: typeof db): void {
 		for (const child of storedUsersTableBody.children) {
 			child.remove();
 		}
