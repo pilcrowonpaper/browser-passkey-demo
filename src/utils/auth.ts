@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { decodeBase64Url, encodeBase64Url } from "./encode";
-import { verifyAttestation, verifyAssertion } from "./passkey";
+import { verifyAssertion } from "./passkey";
 
 type User = {
 	userId: string;
@@ -36,21 +36,26 @@ export async function signUp(username: string): Promise<User> {
 		},
 	});
 	if (!(publicKeyCredential instanceof PublicKeyCredential)) {
-		throw new Error("Failed to validate");
+		throw new TypeError();
+	}
+	if (
+		!(publicKeyCredential.response instanceof AuthenticatorAttestationResponse)
+	) {
+		throw new TypeError("Unexpected attestation response");
 	}
 
-	// should be handled in server - start
+	// should be handled in server from here
 	const userId = generateId(8);
-	const publicKey = await verifyAttestation(publicKeyCredential, {
-		challenge,
-	});
+	const publicKey = publicKeyCredential.response.getPublicKey();
+	if (!publicKey) {
+		throw new Error("Could not retrieve public key");
+	}
 	db.insert({
 		id: userId,
 		credential_id: publicKeyCredential.id, // base64url encoded
 		username,
 		public_key: encodeBase64Url(publicKey),
 	});
-	// should be handled in server - end
 
 	return { userId, username };
 }
@@ -66,7 +71,7 @@ export async function signIn(): Promise<User> {
 		},
 	});
 	if (!(publicKeyCredential instanceof PublicKeyCredential)) {
-		throw new Error("Failed to verify assertion");
+		throw new TypeError();
 	}
 
 	// should be handled in server - start
